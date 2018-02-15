@@ -1,5 +1,4 @@
 import java.io.*;
-import java.lang.reflect.Array;
 import java.security.*;
 import java.util.*;
 
@@ -67,6 +66,13 @@ public class PrincessesAndMonsters {
     final int GROUP_SIZE = 4;
 
     public String initialize(int S, int[] princesses, int[] monsters, int K) {
+        try {
+            rand = SecureRandom.getInstance("SHA1PRNG");
+        } catch (Exception e) { return ""; }
+        rand.setSeed(1234);
+        Knight.rand = rand;
+        t = -1;
+
         this.S = S;
         this.P = princesses.length / 2;
         this.M = monsters.length / 2;
@@ -92,9 +98,7 @@ public class PrincessesAndMonsters {
         cy = (int)(centerY / P);
         cx = (int)(centerX / P);
 
-        final int inc = INC;
         int widMax = Math.max(pBottom - pTop, pRight - pLeft);
-//        System.out.println("widmax, k/3 -> " + widMax + ", " + (K / 3)); //debug
         widMax = Math.max(widMax, K / 3) / 2;
 //        widMax = K / 2;
         pLeft = Math.max(cx - widMax, 1);
@@ -124,20 +128,7 @@ public class PrincessesAndMonsters {
             msy[i] = monsters[i * 2];
             msx[i] = monsters[i * 2 + 1];
         }
-        try {
-           rand = SecureRandom.getInstance("SHA1PRNG");
-        } catch (Exception e) { return ""; }
-        rand.setSeed(1234);
-        t = -1;
-        // all knights start in top left corner
         knight = new Knight[K];
-        int groups = K / GROUP_SIZE;
-//        Pos[] targets = new Pos[groups];
-        for (int i = 0; i < groups; i++) {
-
-//            targets[i] = new Pos(rand.nextInt(pBottom - pTop) + pTop,
-//                    rand.nextInt(pRight - pLeft) + pLeft);
-        }
         final int baseY = pCornerY[(initC + 1) % 4];
         final int baseX = pCornerX[(initC + 1) % 4];
         for (int i = 0; i < K; i++) {
@@ -155,7 +146,10 @@ public class PrincessesAndMonsters {
                     new Pos(pCornerY[(initC + 2) % 4], pCornerX[(initC + 2) % 4]),
                     new Pos(cornerY[(initC + 2) % 4], cornerX[(initC + 2) % 4]),
             });
-            knight[i].updateTarget();
+            knight[i].setSpeedQueue(new double[]{
+                    1, 0.5, 1, 1,
+            });
+            knight[i].update();
         }
         ay = 0;
         ax = 0;
@@ -169,7 +163,7 @@ public class PrincessesAndMonsters {
         for (int i = 0; i < K; i++) {
             c[i] = knight[i].move();
             if(knight[i].goal()) {
-                knight[i].updateTarget();
+                knight[i].update();
             }
         }
         return new String(c);
@@ -183,10 +177,13 @@ public class PrincessesAndMonsters {
 }
 
 class Knight {
+    static SecureRandom rand;
     int i;
     Pos p, t;
     Queue<Pos> targets;
+    Queue<Double> speedQueue;
     int updateCount = 0;
+    double speed = 1;
     boolean stop = false;
 
     Knight(int i, int y, int x) {
@@ -207,13 +204,18 @@ class Knight {
         t.set(y, x);
     }
 
+    void setSpeedQueue(double[] ss) {
+        speedQueue = new ArrayDeque<>();
+        for(double s: ss) speedQueue.add(s);
+    }
+
     void setTargetQueue(Pos[] ts) {
         targets = new ArrayDeque<>();
         targets.addAll(Arrays.asList(ts));
     }
 
     char move() {
-        if(stop) return 'T';
+        if(stop || rand.nextDouble() > speed) return 'T';
         return move(t.y, t.x);
     }
 
@@ -221,9 +223,10 @@ class Knight {
         return p.eq(t);
     }
 
-    void updateTarget() {
+    void update() {
         if(targets.isEmpty()) return;
         t = targets.poll();
+        speed = speedQueue.poll();
         updateCount++;
     }
 
