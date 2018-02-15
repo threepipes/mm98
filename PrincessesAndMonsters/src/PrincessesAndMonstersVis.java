@@ -3,7 +3,9 @@ import java.awt.event.*;
 import java.awt.image.*;
 import java.io.*;
 import java.security.SecureRandom;
+import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.List;
 import javax.swing.*;
 
 // --------------------------------------------------------
@@ -606,6 +608,7 @@ public class PrincessesAndMonstersVis {
     }
     // ---------------------------------------------------
     PrincessesAndMonsters solver;
+    Result result;
     public PrincessesAndMonstersVis(String seed) {
         // interface for runTest
         if (vis)
@@ -631,12 +634,13 @@ public class PrincessesAndMonstersVis {
         }
 
         double s = runTest(seed);
+        result = new Result(seed, solver.K, solver.S, solver.M, solver.P, s);
 
         if (thread != null)
             try { thread.join(1000); } 
             catch (Exception e) { e.printStackTrace(); }
 
-        System.out.println("Score = " + s);
+//        System.out.println("Score = " + s);
 
         if (proc != null)
             try { proc.destroy(); }
@@ -645,7 +649,7 @@ public class PrincessesAndMonstersVis {
     // ---------------------------------------------------
     public static void main(String[] args) {
         args = new String[]{
-                "-vis",
+//                "-vis",
         };
         String seed = "1";
         vis = false;
@@ -668,14 +672,61 @@ public class PrincessesAndMonstersVis {
             if (args[i].equals("-timelimit"))
                 TL = Integer.parseInt(args[++i]);
         }
-        for (int i = 11; i <= 30; i++) {
+        List<Result> results = new ArrayList<>();
+        for (int i = 101; i <= 200; i++) {
+//        for (int i = 30; i <= 50; i++) {
             seed = "" + i;
             PrincessesAndMonstersVis f = new PrincessesAndMonstersVis(seed);
+            Result res = f.result;
+            results.add(res);
+            System.out.println(res);
+        }
+
+        outputResult(results);
+    }
+
+    static void outputResult(List<Result> results) {
+        Calendar c = Calendar.getInstance();
+        SimpleDateFormat sdf = new SimpleDateFormat("MMdd_HHmmss");
+        String filename = "../results/result_" + sdf.format(c.getTime()) + ".csv";
+        try {
+            PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filename)));
+            writer.println("seed, K, S, M, P, score");
+            for(Result r: results) {
+                writer.println(r.csv());
+            }
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
     // ---------------------------------------------------
     void addFatalError(String message) {
         System.out.println(message);
+    }
+}
+
+class Result {
+    long seed;
+    int K, S, M, P;
+    double score;
+    Result(String seed, int k, int s, int m, int p, double score) {
+        this.score = score;
+        K = k;
+        S = s;
+        M = m;
+        P = p;
+        this.seed = Long.parseLong(seed);
+    }
+
+    String csv() {
+        return String.format("%d, %d, %d, %d, %d, %f", seed, K, S, M, P, score);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("seed=%3d, K=%3d, S=%3d, M=%3d, P=%3d, score=%f",
+                seed, K, S, M, P, score);
     }
 }
 

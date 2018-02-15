@@ -87,20 +87,28 @@ public class PrincessesAndMonsters {
             pTop = Math.min(pTop, psy[i]);
             pLeft = Math.min(pLeft, psx[i]);
             pBottom = Math.max(pBottom, psy[i]);
-            pRight = Math.max(pRight, psy[i]);
+            pRight = Math.max(pRight, psx[i]);
         }
+        cy = (int)(centerY / P);
+        cx = (int)(centerX / P);
 
         final int inc = INC;
-        pLeft = Math.max(pLeft - inc, 0);
-        pRight = Math.min(pRight + inc, S - 1);
-        pTop = Math.max(pTop - inc, 0);
-        pBottom = Math.min(pBottom + inc, S - 1);
+        int widMax = Math.max(pBottom - pTop, pRight - pLeft);
+//        System.out.println("widmax, k/3 -> " + widMax + ", " + (K / 3)); //debug
+        widMax = Math.max(widMax, K / 3) / 2;
+//        widMax = K / 2;
+        pLeft = Math.max(cx - widMax, 1);
+        pRight = Math.min(cx + widMax, S - 2);
+        pTop = Math.max(cy - widMax, 1);
+        pBottom = Math.min(cy + widMax, S - 2);
+//        pLeft = Math.max(pLeft - inc, 0);
+//        pRight = Math.min(pRight + inc, S - 1);
+//        pTop = Math.max(pTop - inc, 0);
+//        pBottom = Math.min(pBottom + inc, S - 1);
         pCornerY = new int[]{pTop, pTop, pBottom, pBottom};
         pCornerX = new int[]{pLeft, pRight, pRight, pLeft};
         cornerY = new int[]{0, 0, S, S};
         cornerX = new int[]{0, S, S, 0};
-        cy = (int)(centerY / P);
-        cx = (int)(centerX / P);
 
         initC = -1;
         int near = S * S;
@@ -124,16 +132,26 @@ public class PrincessesAndMonsters {
         // all knights start in top left corner
         knight = new Knight[K];
         int groups = K / GROUP_SIZE;
-        Pos[] targets = new Pos[groups];
+//        Pos[] targets = new Pos[groups];
         for (int i = 0; i < groups; i++) {
-            targets[i] = new Pos(rand.nextInt(pBottom - pTop) + pTop,
-                    rand.nextInt(pRight - pLeft) + pLeft);
+
+//            targets[i] = new Pos(rand.nextInt(pBottom - pTop) + pTop,
+//                    rand.nextInt(pRight - pLeft) + pLeft);
         }
+        final int baseY = pCornerY[(initC + 1) % 4];
+        final int baseX = pCornerX[(initC + 1) % 4];
         for (int i = 0; i < K; i++) {
+            final double vy = - baseY + pCornerY[(initC + 3) % 4];
+            final double vx = - baseX + pCornerX[(initC + 3) % 4];
+            final double t = sigmoid(3, rand.nextDouble() * 2 - 1);
+            Pos tPos = new Pos(
+                    (int)(baseY + vy * t),
+                    (int)(baseX + vx * t)
+            );
             knight[i] = new Knight(i, cornerY[initC], cornerX[initC]);
             knight[i].setTargetQueue(new Pos[]{
                     new Pos(pCornerY[initC], pCornerX[initC]),
-                    targets[i % groups],
+                    tPos,
                     new Pos(pCornerY[(initC + 2) % 4], pCornerX[(initC + 2) % 4]),
                     new Pos(cornerY[(initC + 2) % 4], cornerX[(initC + 2) % 4]),
             });
@@ -159,6 +177,9 @@ public class PrincessesAndMonsters {
     int dist(int y1, int x1, int y2, int x2) {
         return Math.abs(y1 - y2) + Math.abs(x1 - x2);
     }
+    double sigmoid(double a, double x) {
+        return 1 / (1 + Math.pow(Math.E, -a * x));
+    }
 }
 
 class Knight {
@@ -166,11 +187,20 @@ class Knight {
     Pos p, t;
     Queue<Pos> targets;
     int updateCount = 0;
+    boolean stop = false;
 
     Knight(int i, int y, int x) {
         p = new Pos(y, x);
         t = new Pos(0, 0);
         this.i = i;
+    }
+
+    void stop() {
+        stop = true;
+    }
+
+    void start() {
+        stop = false;
     }
 
     void setTarget(int y, int x) {
@@ -183,6 +213,7 @@ class Knight {
     }
 
     char move() {
+        if(stop) return 'T';
         return move(t.y, t.x);
     }
 
