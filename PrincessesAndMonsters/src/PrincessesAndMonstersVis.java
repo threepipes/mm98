@@ -207,6 +207,7 @@ public class PrincessesAndMonstersVis {
             timeLeft -= (int)(System.currentTimeMillis() - startTime);
         } catch (Exception e) {
             addFatalError("Failed to get result from initialize.");
+            System.out.println(e);
             return invalidScore;
         }
         if (timeLeft < 0) {
@@ -474,6 +475,9 @@ public class PrincessesAndMonstersVis {
     BufferedReader br;
     // ---------------------------------------------------
     String initialize(int S, int[] princesses, int[] monsters, int K) throws IOException {
+        if(solver != null) {
+            return solver.initialize(S, princesses, monsters, K);
+        }
         // pass the params to the solution and get the return
         StringBuffer sb = new StringBuffer();
         sb.append(S).append('\n');
@@ -493,6 +497,9 @@ public class PrincessesAndMonstersVis {
     }
     // ---------------------------------------------------
     String move(int[] status, int P, int M, int timeLeft) throws IOException {
+        if(solver != null) {
+            return solver.move(status, P, M, timeLeft);
+        }
         // pass the params to the solution and get the return
         StringBuffer sb = new StringBuffer();
         sb.append(status.length).append('\n');
@@ -598,6 +605,7 @@ public class PrincessesAndMonstersVis {
         public void windowDeiconified(WindowEvent e) { }
     }
     // ---------------------------------------------------
+    PrincessesAndMonsters solver;
     public PrincessesAndMonstersVis(String seed) {
         // interface for runTest
         if (vis)
@@ -618,6 +626,8 @@ public class PrincessesAndMonstersVis {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        } else {
+            solver = new PrincessesAndMonsters();
         }
 
         double s = runTest(seed);
@@ -634,9 +644,12 @@ public class PrincessesAndMonstersVis {
     }
     // ---------------------------------------------------
     public static void main(String[] args) {
+        args = new String[]{
+                "-vis",
+        };
         String seed = "1";
         vis = false;
-        del = 100;
+        del = 100; // sleep time
         SZ = 15;
         TL = 20;
         for (int i = 0; i < args.length; i++) {
@@ -655,7 +668,10 @@ public class PrincessesAndMonstersVis {
             if (args[i].equals("-timelimit"))
                 TL = Integer.parseInt(args[++i]);
         }
-        PrincessesAndMonstersVis f = new PrincessesAndMonstersVis(seed);
+        for (int i = 11; i <= 30; i++) {
+            seed = "" + i;
+            PrincessesAndMonstersVis f = new PrincessesAndMonstersVis(seed);
+        }
     }
     // ---------------------------------------------------
     void addFatalError(String message) {
