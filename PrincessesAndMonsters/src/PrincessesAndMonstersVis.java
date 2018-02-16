@@ -2,6 +2,9 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.*;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -585,6 +588,13 @@ public class PrincessesAndMonstersVis {
                 g2.drawLine(i*SZ + SZ, 0 + SZ, i*SZ + SZ, S*SZ + SZ);
             }
 
+            {
+                g2.setColor(Color.RED);
+                g2.drawRect(solver.pLeft * SZ + SZ, solver.pTop * SZ + SZ,
+                        (solver.pRight - solver.pLeft) * SZ,
+                        (solver.pBottom - solver.pTop) * SZ);
+            }
+
             g.drawImage(bi,0,0, SZW, SZH, null);
         }
         // -------------------------------------
@@ -648,9 +658,12 @@ public class PrincessesAndMonstersVis {
     }
     // ---------------------------------------------------
     public static void main(String[] args) {
-        args = new String[]{
-//                "-vis",
-        };
+
+        boolean debug = true;
+        debug = false;
+
+
+        if(debug) args = new String[]{"-vis"};
         String seed = "1";
         vis = false;
         del = 100; // sleep time
@@ -673,8 +686,12 @@ public class PrincessesAndMonstersVis {
                 TL = Integer.parseInt(args[++i]);
         }
         List<Result> results = new ArrayList<>();
-        for (int i = 101; i <= 200; i++) {
-//        for (int i = 3; i <= 30; i++) {
+        int start = 10, end = 20;
+        if(!debug) {
+            start = 101;
+            end = 200;
+        }
+        for (int i = start; i <= end; i++) {
             seed = "" + i;
             PrincessesAndMonstersVis f = new PrincessesAndMonstersVis(seed);
             Result res = f.result;
@@ -682,13 +699,14 @@ public class PrincessesAndMonstersVis {
             System.out.println(res);
         }
 
-        outputResult(results);
+        if(!debug) outputResult(results);
     }
 
     static void outputResult(List<Result> results) {
         Calendar c = Calendar.getInstance();
         SimpleDateFormat sdf = new SimpleDateFormat("MMdd_HHmmss");
-        String filename = "../results/result_" + sdf.format(c.getTime()) + ".csv";
+        String date = sdf.format(c.getTime());
+        String filename = "../results/result_" + date + ".csv";
         try {
             PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filename)));
             writer.println("seed,K,S,M,P,score");
@@ -696,6 +714,18 @@ public class PrincessesAndMonstersVis {
                 writer.println(r.csv());
             }
             writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        saveSnapshot(date);
+    }
+
+    static void saveSnapshot(String date) {
+        String filename = "../snapshot/code_" + date + ".java";
+        try {
+            Path sourcePath = Paths.get("./src/PrincessesAndMonsters.java");
+            Path targetPath = Paths.get(filename);
+            Files.copy(sourcePath, targetPath);
         } catch (IOException e) {
             e.printStackTrace();
         }

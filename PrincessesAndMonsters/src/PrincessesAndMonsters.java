@@ -84,8 +84,8 @@ public class PrincessesAndMonsters {
         psx = new int[P];
         msy = new int[M];
         msx = new int[M];
-        long centerY = 0;
-        long centerX = 0;
+        int centerY = 0;
+        int centerX = 0;
         pLeft = S;
         pTop = S;
         for (int i = 0; i < P; i++) {
@@ -98,8 +98,8 @@ public class PrincessesAndMonsters {
             pBottom = Math.max(pBottom, psy[i]);
             pRight = Math.max(pRight, psx[i]);
         }
-        cy = (int)(centerY / P);
-        cx = (int)(centerX / P);
+        cy = centerY / P;
+        cx = centerX / P;
 
         int widMax = Math.max(pBottom - pTop, pRight - pLeft);
         widMax = Math.max(widMax, 3);
@@ -133,6 +133,7 @@ public class PrincessesAndMonsters {
             msx[i] = monsters[i * 2 + 1];
         }
         knight = new Knight[K];
+        final int diag = (initC + 2) % 4;
         final int baseY = pCornerY[(initC + 1) % 4];
         final int baseX = pCornerX[(initC + 1) % 4];
         int group = K / 10;
@@ -152,11 +153,13 @@ public class PrincessesAndMonsters {
             knight[i].setTargetQueue(new Pos[]{
                     new Pos(pCornerY[initC], pCornerX[initC]),
                     tPos,
-                    new Pos(pCornerY[(initC + 2) % 4], pCornerX[(initC + 2) % 4]),
-                    new Pos(cornerY[(initC + 2) % 4], cornerX[(initC + 2) % 4]),
+                    new Pos(pCornerY[diag], pCornerX[diag]),
+                    new Pos(cornerY[diag], cornerX[diag]),
             });
             knight[i].setSpeedQueue(new double[]{
-                    1, 1 - (1 - Math.pow((t - 0.5) * 2, 2)) * 0.2 - 0.2, 1, 1,
+                    1,
+                    1 - (1 - Math.pow((t - 0.5) * 2, 2)) * 0.2 - 0.1 - rand.nextDouble() * 0.1,
+                    1, 1,
             });
             knight[i].setLoop(loops[i % group].copy());
             knight[i].update();
@@ -169,7 +172,6 @@ public class PrincessesAndMonsters {
     }
     int ax, ay;
     int state = 0;
-    boolean goCenter = false;
     public String move(int[] status, int P, int M, int timeLeft) {
         t++;
         boolean stopAll = true;
