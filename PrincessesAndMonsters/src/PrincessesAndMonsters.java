@@ -103,7 +103,7 @@ public class PrincessesAndMonsters {
 
         int widMax = Math.max(pBottom - pTop, pRight - pLeft);
         widMax = Math.max(widMax, 3);
-        widMax = Math.max(widMax, K / 3) / 2;
+        widMax = (Math.max(widMax, K / 3) + widMax) / 4;
 //        widMax = K / 2;
         pLeft = Math.max(cx - widMax, 1);
         pRight = Math.min(cx + widMax, S - 2);
@@ -169,6 +169,7 @@ public class PrincessesAndMonsters {
     }
     int ax, ay;
     int state = 0;
+    boolean goCenter = false;
     public String move(int[] status, int P, int M, int timeLeft) {
         t++;
         boolean stopAll = true;
