@@ -674,7 +674,7 @@ public class PrincessesAndMonstersVis {
         }
         List<Result> results = new ArrayList<>();
         for (int i = 101; i <= 200; i++) {
-//        for (int i = 30; i <= 50; i++) {
+//        for (int i = 3; i <= 30; i++) {
             seed = "" + i;
             PrincessesAndMonstersVis f = new PrincessesAndMonstersVis(seed);
             Result res = f.result;
@@ -691,7 +691,7 @@ public class PrincessesAndMonstersVis {
         String filename = "../results/result_" + sdf.format(c.getTime()) + ".csv";
         try {
             PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filename)));
-            writer.println("seed, K, S, M, P, score");
+            writer.println("seed,K,S,M,P,score");
             for(Result r: results) {
                 writer.println(r.csv());
             }
@@ -720,7 +720,7 @@ class Result {
     }
 
     String csv() {
-        return String.format("%d, %d, %d, %d, %d, %f", seed, K, S, M, P, score);
+        return String.format("%d,%d,%d,%d,%d,%f", seed, K, S, M, P, score);
     }
 
     @Override
