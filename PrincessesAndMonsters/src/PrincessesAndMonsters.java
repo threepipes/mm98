@@ -2,6 +2,7 @@ import java.security.*;
 import java.util.*;
 
 public class PrincessesAndMonsters {
+    static boolean debug = false;
 
     final int[] diay = {1, 1, -1, -1};
     final int[] diax = {1, -1, -1, 1};
@@ -81,6 +82,15 @@ public class PrincessesAndMonsters {
             msy[i] = monsters[i * 2];
             msx[i] = monsters[i * 2 + 1];
         }
+        double meanDist = 0;
+        for (int i = 0; i < P; i++) {
+            for (int j = 0; j < M; j++) {
+                meanDist += Math.abs(msy[i] - psy[i]) + Math.abs(msy[i] - psy[i]);
+            }
+        }
+//        meanDist /= P * M;
+//        System.out.println(meanDist + " " + S);
+
         knight = new Knight[K];
         final int diag = (initC + 2) % 4;
         final int baseY = pCornerY[(initC + 1) % 4];
@@ -99,53 +109,13 @@ public class PrincessesAndMonsters {
                     (int)(baseX + vx * t)
             );
             knight[i] = new Knight(i, cornerY[initC], cornerX[initC]);
-            if(false) {
-                knight[i].setTargetQueue(new Pos[]{
-                        new Pos(pCornerY[initC], pCornerX[initC]),
-                        tPos,
-                        new Pos(pCornerY[diag], pCornerX[diag]),
-                        tPos,
-                        new Pos(pCornerY[initC], pCornerX[initC]),
-                        new Pos(cornerY[initC], cornerX[initC]),
-                });
-                knight[i].setSpeedQueue(new double[]{
-                        1,
-                        // 必要なパラメータ: widMax, near
-                        1 - (1 - Math.pow((t - 0.5) * 2, 2)) * 0.2 - 0.1 - rand.nextDouble() * 0.1,
-                        1,
-                        1,// - (1 - Math.pow((t - 0.5) * 2, 2)) * 0.2 - 0.1 - rand.nextDouble() * 0.1,
-                        1,
-                        1,
-                });
-                knight[i].setStateQueue(new Count[]{
-                        Count.FirstCorner,
-                        Count.FirstDiagonal,
-                        Count.SecondCorner,
-                        Count.SecondDiagonal,
-                        Count.LastConer,
-                        Count.Finish,
-                });
-            } else {
-                knight[i].setTargetQueue(new Pos[]{
-                        new Pos(pCornerY[initC], pCornerX[initC]),
-                        tPos,
-                        new Pos(pCornerY[diag], pCornerX[diag]),
-                        new Pos(cornerY[diag], cornerX[diag]),
-                });
-                knight[i].setSpeedQueue(new double[]{
-                        1,
-                        // 必要なパラメータ: widMax, near
-                        1 - (1 - Math.pow((t - 0.5) * 2, 2)) * 0.2 - 0.1 - rand.nextDouble() * 0.1,
-                        1,
-                        1,
-                });
-                knight[i].setStateQueue(new Count[]{
-                        Count.FirstCorner,
-                        Count.FirstDiagonal,
-                        Count.LastConer,
-                        Count.Finish,
-                });
-            }
+            knight[i].setOrderQueue(new Order[]{
+                    new Order(Command.Corner, new Pos(pCornerY[initC], pCornerX[initC]), 1),
+                    new Order(Command.Diagonal, tPos,
+                            1 - (1 - Math.pow((t - 0.5) * 2, 2)) * 0.2 - 0.1 - rand.nextDouble() * 0.1),
+                    new Order(Command.Gather, new Pos(pCornerY[diag], pCornerX[diag]), 1),
+                    new Order(Command.Finish, new Pos(cornerY[diag], cornerX[diag]), 1),
+            });
             knight[i].setLoop(loops[i % group].copy());
             knight[i].update();
         }
@@ -161,14 +131,29 @@ public class PrincessesAndMonsters {
     public String move(int[] status, int P, int M, int timeLeft) {
         t++;
         boolean stopAll = true;
+        int captured = 0;
+        int dead = 0;
+        int alive = 0;
+        double distAvg = 0;
+        for (int i = 0; i < K; i++) {
+            if(status[i] > 0) captured += status[i];
+            if(status[i] == -1) dead++;
+            if(status[i] >= 0) {
+                distAvg += knight[i].distNext();
+                alive++;
+            }
+        }
+        if(alive > 0) distAvg /= alive;
+        if(distAvg == 0) distAvg = 1;
         for (int i = 0; i < K; i++) {
             if(status[i] < 0) continue;
             Knight kn = knight[i];
-//            if(status[i] > 0 && kn.speed == 1) kn.speed = 0.9;
-            if(state == 0 && kn.updateCount == Count.LastConer && kn.distNext() < 2) kn.stop();
+            kn.delay = 1;
+            final int distNext = kn.distNext();
+            if(state == 0 && kn.updateCount == Command.Gather && distNext < 2) kn.stop();
             if(state == 1 && kn.stop) kn.start();
-            if(state == 2 && kn.updateCount == Count.Finish && kn.distNext() == 1 && status[i] == 0)
-                kn.update();
+//            if(state == 2 && kn.updateCount == Command.Finish && distNext == 1 && status[i] == 0)
+//                kn.update();
             final int nc = getNearCorner(kn);
             if(nc >= 0) kn.setTarget(cornerY[nc], cornerX[nc]);
             else if(M == 0 && P == 0) kn.setTarget(cornerY[- nc - 1], cornerX[- nc - 1]);
@@ -228,26 +213,38 @@ public class PrincessesAndMonsters {
     }
 }
 
-enum Count {
+enum Command {
     Init,
-    FirstCorner,
-    FirstDiagonal,
-    SecondCorner,
-    SecondDiagonal,
-    LastConer,
+    Corner,
+    Diagonal,
+    Gather,
     Finish,
+}
+
+class Order {
+    Command command;
+    Pos pos;
+    double speed;
+    Order(Command c, Pos p, double s) {
+        command = c;
+        pos = p;
+        speed = s;
+    }
 }
 
 class Knight {
     static SecureRandom rand;
     int i;
     Pos p, t, d;
+    int orderId;
+    List<Order> orderQueue;
     Queue<Pos> targets;
     Queue<Double> speedQueue;
-    Queue<Count> stateQueue;
+    Queue<Command> commandQueue;
     PrincessesAndMonsters.Loop loop;
-    Count updateCount = Count.Init;
+    Command updateCount = Command.Init;
     double speed = 1;
+    double delay = 1;
     boolean stop = false;
     int err;
 
@@ -255,6 +252,7 @@ class Knight {
         p = new Pos(y, x);
         t = new Pos(0, 0);
         this.i = i;
+        orderId = 0;
     }
 
     void stop() {
@@ -273,23 +271,13 @@ class Knight {
         this.loop = loop;
     }
 
-    void setSpeedQueue(double[] ss) {
-        speedQueue = new ArrayDeque<>();
-        for(double s: ss) speedQueue.add(s);
-    }
-
-    void setTargetQueue(Pos[] ts) {
-        targets = new ArrayDeque<>();
-        targets.addAll(Arrays.asList(ts));
-    }
-
-    void setStateQueue(Count[] cnt) {
-        stateQueue = new ArrayDeque<>();
-        stateQueue.addAll(Arrays.asList(cnt));
+    void setOrderQueue(Order[] orders) {
+        orderQueue = new ArrayList<>();
+        orderQueue.addAll(Arrays.asList(orders));
     }
 
     char move() {
-        if(stop || rand.nextDouble() > speed) return 'T';
+        if(stop || rand.nextDouble() > speed * delay) return 'T';
         return move(t.y, t.x);
     }
 
@@ -298,11 +286,13 @@ class Knight {
     }
 
     void update() {
-        if(targets.isEmpty()) t = loop.next();
+        if(orderId >= orderQueue.size()) t = loop.next();
         else {
-            t = targets.poll();
-            speed = speedQueue.poll();
-            updateCount = stateQueue.poll();
+            Order o = orderQueue.get(orderId++);
+            t = o.pos;
+            speed = o.speed;
+            updateCount = o.command;
+            delay = 1;
         }
         d = new Pos(Math.abs(p.y - t.y), Math.abs(p.x - t.x));
         err = d.x - d.y;
