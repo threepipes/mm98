@@ -659,14 +659,19 @@ public class PrincessesAndMonstersVis {
     // ---------------------------------------------------
     public static void main(String[] args) {
 
+        boolean par = true;
         boolean debug = true;
-        debug = false;
 
+//        debug = false;
 
-        if(debug) args = new String[]{"-vis"};
+        if(debug) {
+            par = false;
+            args = new String[]{"-vis"};
+            PrincessesAndMonsters.debug = true;
+        }
         String seed = "1";
         vis = false;
-        del = 100; // sleep time
+        del = 200; // sleep time
         SZ = 15;
         TL = 20;
         for (int i = 0; i < args.length; i++) {
@@ -686,21 +691,36 @@ public class PrincessesAndMonstersVis {
                 TL = Integer.parseInt(args[++i]);
         }
         List<Result> results = new ArrayList<>();
-        int start = 10, end = 20;
+        int start = 600, end = 650;
         if(!debug) {
             start = 101;
             end = 200;
         }
-        for (int i = start; i <= end; i++) {
-            seed = "" + i;
-            PrincessesAndMonstersVis f = new PrincessesAndMonstersVis(seed);
-            Result res = f.result;
-            results.add(res);
-            System.out.println(res);
+        if(!par) {
+            for (int i = start; i <= end; i++) {
+                seed = "" + i;
+                PrincessesAndMonstersVis f = new PrincessesAndMonstersVis(seed);
+                Result res = f.result;
+                results.add(res);
+                System.out.println(res);
+            }
+
+        } else {
+            List<Generator> list = new ArrayList<>();
+            for (int i = start; i <= end; i++) {
+                list.add(new Generator(i + ""));
+            }
+            list.parallelStream().forEach(Generator::gen);
+            for (Generator g: list) {
+                Result res = g.f.result;
+                results.add(res);
+            }
         }
 
-        if(!debug) outputResult(results);
+        if (!debug) outputResult(results);
     }
+
+
 
     static void outputResult(List<Result> results) {
         Calendar c = Calendar.getInstance();
@@ -733,6 +753,18 @@ public class PrincessesAndMonstersVis {
     // ---------------------------------------------------
     void addFatalError(String message) {
         System.out.println(message);
+    }
+}
+
+class Generator {
+    String seed;
+    PrincessesAndMonstersVis f;
+    Generator(String seed) {
+        this.seed = seed;
+    }
+    void gen() {
+        f = new PrincessesAndMonstersVis(seed);
+        System.out.println("fin " + seed + ": " + f.result.score);
     }
 }
 

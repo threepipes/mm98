@@ -116,6 +116,12 @@ public class PrincessesAndMonsters {
                     new Order(Command.Gather, new Pos(pCornerY[diag], pCornerX[diag]), 1),
                     new Order(Command.Finish, new Pos(cornerY[diag], cornerX[diag]), 1),
             });
+            knight[i].setOrderSub(new Order[]{
+                    new Order(Command.Diagonal, tPos,
+                            1 - (1 - Math.pow((t - 0.5) * 2, 2)) * 0.2 - 0.1 - rand.nextDouble() * 0.1),
+                    new Order(Command.Gather, new Pos(pCornerY[initC], pCornerX[initC]), 1),
+                    new Order(Command.Finish, new Pos(cornerY[initC], cornerX[initC]), 1),
+            });
             knight[i].setLoop(loops[i % group].copy());
             knight[i].update();
         }
@@ -132,18 +138,18 @@ public class PrincessesAndMonsters {
         t++;
         boolean stopAll = true;
         int captured = 0;
-        int dead = 0;
-        int alive = 0;
+        int deadKnight = 0;
+        int aliveKnight = 0;
         double distAvg = 0;
         for (int i = 0; i < K; i++) {
             if(status[i] > 0) captured += status[i];
-            if(status[i] == -1) dead++;
+            if(status[i] == -1) deadKnight++;
             if(status[i] >= 0) {
                 distAvg += knight[i].distNext();
-                alive++;
+                aliveKnight++;
             }
         }
-        if(alive > 0) distAvg /= alive;
+        if(aliveKnight > 0) distAvg /= aliveKnight;
         if(distAvg == 0) distAvg = 1;
         for (int i = 0; i < K; i++) {
             if(status[i] < 0) continue;
@@ -238,9 +244,7 @@ class Knight {
     Pos p, t, d;
     int orderId;
     List<Order> orderQueue;
-    Queue<Pos> targets;
-    Queue<Double> speedQueue;
-    Queue<Command> commandQueue;
+    List<Order> subOrders;
     PrincessesAndMonsters.Loop loop;
     Command updateCount = Command.Init;
     double speed = 1;
@@ -274,6 +278,16 @@ class Knight {
     void setOrderQueue(Order[] orders) {
         orderQueue = new ArrayList<>();
         orderQueue.addAll(Arrays.asList(orders));
+    }
+
+    void setOrderSub(Order[] orders) {
+        subOrders = new ArrayList<>();
+        subOrders.addAll(Arrays.asList(orders));
+    }
+
+    void changeOrderSet() {
+        orderQueue = subOrders;
+        orderId = 0;
     }
 
     char move() {
