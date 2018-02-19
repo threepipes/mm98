@@ -19,6 +19,8 @@ public class PrincessesAndMonsters {
     int[] pCornerY, pCornerX;
     int[] cornerY, cornerX;
     int initC;
+    double meanDist;
+    double cyf, cxf;
 
     static double SIGMOID_A = 3;
     static long RAND_SEED = 1234;
@@ -53,8 +55,10 @@ public class PrincessesAndMonsters {
             pBottom = Math.max(pBottom, psy[i]);
             pRight = Math.max(pRight, psx[i]);
         }
-        cy = centerY / P;
-        cx = centerX / P;
+        cyf = (double) centerY / P;
+        cxf = (double) centerX / P;
+        cy = (int) cyf;
+        cx = (int) cxf;
 
         int widMax = Math.max(pBottom - pTop, pRight - pLeft);
         widMax = Math.max(widMax, 3);
@@ -82,13 +86,13 @@ public class PrincessesAndMonsters {
             msy[i] = monsters[i * 2];
             msx[i] = monsters[i * 2 + 1];
         }
-        double meanDist = 0;
+        meanDist = 0;
         for (int i = 0; i < P; i++) {
             for (int j = 0; j < M; j++) {
                 meanDist += Math.abs(msy[i] - psy[i]) + Math.abs(msy[i] - psy[i]);
             }
         }
-//        meanDist /= P * M;
+        meanDist /= P * M;
 //        System.out.println(meanDist + " " + S);
 
         knight = new Knight[K];
@@ -108,12 +112,17 @@ public class PrincessesAndMonsters {
                     (int)(baseY + vy * t),
                     (int)(baseX + vx * t)
             );
+//            final double ts = sigmoid(SIGMOID_A, rand.nextDouble() * 2 - 1) / 2 + 0.25;
+//            Pos sPos = new Pos(
+//                    (int)(baseY + vy * ts),
+//                    (int)(baseX + vx * ts)
+//            );
             knight[i] = new Knight(i, cornerY[initC], cornerX[initC]);
             knight[i].setOrderQueue(new Order[]{
                     new Order(Command.Corner, new Pos(pCornerY[initC], pCornerX[initC]), 1),
                     new Order(Command.Diagonal, tPos,
                             1 - (1 - Math.pow((t - 0.5) * 2, 2)) * 0.2 - 0.1 - rand.nextDouble() * 0.1),
-                    new Order(Command.Gather, new Pos(pCornerY[diag], pCornerX[diag]), 1),
+                    new Order(Command.Branch, new Pos(pCornerY[diag], pCornerX[diag]), 1),
                     new Order(Command.Finish, new Pos(cornerY[diag], cornerX[diag]), 1),
             });
             knight[i].setOrderSub(new Order[]{
@@ -134,16 +143,33 @@ public class PrincessesAndMonsters {
 
     int ax, ay;
     int state = 0;
+    int changeOrder = 0;
+    int deadKnight = 0;
+    int deadWithPrincess = 0;
+    int killedPrincess = 0;
+    int killedMonsters = 0;
+    int escorted = 0;
+
+    int notCapturedCO = 0;
+    int deadKnightCO = 0;
+    int passedTurnCO = 0;
+
+    int[] preStatus = new int[100];
     public String move(int[] status, int P, int M, int timeLeft) {
         t++;
         boolean stopAll = true;
         int captured = 0;
-        int deadKnight = 0;
         int aliveKnight = 0;
+        deadKnight = 0;
+        killedPrincess = this.P - escorted;
+        killedMonsters = this.M - M;
         double distAvg = 0;
         for (int i = 0; i < K; i++) {
             if(status[i] > 0) captured += status[i];
-            if(status[i] == -1) deadKnight++;
+            if(status[i] == -1) {
+                deadKnight++;
+                if(preStatus[i] > 0) deadWithPrincess++;
+            }
             if(status[i] >= 0) {
                 distAvg += knight[i].distNext();
                 aliveKnight++;
@@ -156,19 +182,38 @@ public class PrincessesAndMonsters {
             Knight kn = knight[i];
             kn.delay = 1;
             final int distNext = kn.distNext();
+            if(changeOrder == 0 && kn.updateCount == Command.Branch && distNext < 2) {
+                notCapturedCO = P - captured;
+                deadKnightCO = deadKnight;
+                if(P - captured > 4 && deadKnight < K * 0.2)
+                    changeOrder = 1;
+                else
+                    changeOrder = -1;
+            }
+            if(kn.updateCount == Command.Branch) {
+                if(changeOrder == -1) kn.updateCount = Command.Gather;
+                else if(changeOrder == 1) {
+                    kn.changeOrderSet();
+                    kn.update();
+                    if(status[i] > 0) kn.setTarget(cy, cx);
+                }
+            }
             if(state == 0 && kn.updateCount == Command.Gather && distNext < 2) kn.stop();
             if(state == 1 && kn.stop) kn.start();
-//            if(state == 2 && kn.updateCount == Command.Finish && distNext == 1 && status[i] == 0)
-//                kn.update();
+            if(state == 2 && kn.updateCount == Command.Finish && distNext == 1) {
+                if(status[i] == 0) kn.update();
+                else escorted += status[i];
+            }
             final int nc = getNearCorner(kn);
             if(nc >= 0) kn.setTarget(cornerY[nc], cornerX[nc]);
-            else if(M == 0 && P == 0) kn.setTarget(cornerY[- nc - 1], cornerX[- nc - 1]);
+            else if(M == 0 && P == 0 || timeLeft < 500) kn.setTarget(cornerY[- nc - 1], cornerX[- nc - 1]);
             c[i] = kn.move();
             if(kn.goal()) kn.update();
             if(!kn.stop) stopAll = false;
         }
         if(stopAll) state++;
         else if(state == 1) state++;
+        preStatus = status;
         return new String(c);
     }
 
@@ -197,7 +242,6 @@ public class PrincessesAndMonsters {
         return 1 / (1 + Math.pow(Math.E, -a * x));
     }
 
-
     class Loop {
         int cycle, inner, position;
         Loop(int cycle, int inner, int position) {
@@ -223,6 +267,7 @@ enum Command {
     Init,
     Corner,
     Diagonal,
+    Branch,
     Gather,
     Finish,
 }

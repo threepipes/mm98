@@ -645,6 +645,19 @@ public class PrincessesAndMonstersVis {
 
         double s = runTest(seed);
         result = new Result(seed, solver.K, solver.S, solver.M, solver.P, s);
+        result.cy = solver.cyf;
+        result.cx = solver.cxf;
+        result.deadKnight = solver.deadKnight;
+        result.deadWithPrincess = solver.deadWithPrincess;
+        result.changeOrder = solver.changeOrder;
+        result.escorted = solver.escorted;
+        result.killedPrincess = solver.killedPrincess;
+        result.meanDist = solver.meanDist;
+        result.killedMonsters = solver.killedMonsters;
+
+        result.notCapturedCO = solver.notCapturedCO;
+        result.deadKnightCO = solver.deadKnightCO;
+
 
         if (thread != null)
             try { thread.join(1000); } 
@@ -662,7 +675,7 @@ public class PrincessesAndMonstersVis {
         boolean par = true;
         boolean debug = true;
 
-//        debug = false;
+        debug = false;
 
         if(debug) {
             par = false;
@@ -671,8 +684,8 @@ public class PrincessesAndMonstersVis {
         }
         String seed = "1";
         vis = false;
-        del = 200; // sleep time
-        SZ = 15;
+        del = 100; // sleep time
+        SZ = 30;
         TL = 20;
         for (int i = 0; i < args.length; i++) {
             if (args[i].equals("-seed"))
@@ -691,10 +704,10 @@ public class PrincessesAndMonstersVis {
                 TL = Integer.parseInt(args[++i]);
         }
         List<Result> results = new ArrayList<>();
-        int start = 600, end = 650;
+        int start = 1270, end = 2000;
         if(!debug) {
-            start = 101;
-            end = 200;
+            start = 1001;
+            end = 2000;
         }
         if(!par) {
             for (int i = start; i <= end; i++) {
@@ -729,7 +742,9 @@ public class PrincessesAndMonstersVis {
         String filename = "../results/result_" + date + ".csv";
         try {
             PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filename)));
-            writer.println("seed,K,S,M,P,score");
+            writer.println("seed,K,S,M,P,score,cy,cx," +
+                    "deadKnight,deadWithPrincess,changeOrder,escorted,killedPrincess,killedMonsters,meanDist," +
+                    "noCapturedCO,deadKnightCO");
             for(Result r: results) {
                 writer.println(r.csv());
             }
@@ -771,6 +786,10 @@ class Generator {
 class Result {
     long seed;
     int K, S, M, P;
+    double cy, cx;
+    int deadKnight, deadWithPrincess, changeOrder, escorted, killedPrincess, killedMonsters;
+    int notCapturedCO, deadKnightCO;
+    double meanDist;
     double score;
     Result(String seed, int k, int s, int m, int p, double score) {
         this.score = score;
@@ -782,7 +801,11 @@ class Result {
     }
 
     String csv() {
-        return String.format("%d,%d,%d,%d,%d,%f", seed, K, S, M, P, score);
+        return String.format("%d,%d,%d,%d,%d,%f,%f,%f,%d,%d,%d,%d,%d,%d,%f,%d,%d",
+                seed, K, S, M, P, score,
+                cy, cx, deadKnight, deadWithPrincess,
+                changeOrder, escorted, killedPrincess, killedMonsters, meanDist,
+                notCapturedCO, deadKnightCO);
     }
 
     @Override
