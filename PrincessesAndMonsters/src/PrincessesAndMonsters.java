@@ -141,6 +141,7 @@ public class PrincessesAndMonsters {
         return new String(c);
     }
 
+    int[][] knightMap;
     int ax, ay;
     int state = 0;
     int changeOrder = 0;
@@ -167,6 +168,7 @@ public class PrincessesAndMonsters {
         double distAvg = 0;
         int gravX = 0;
         int gravY = 0;
+        knightMap = new int[S][S];
         for (int i = 0; i < K; i++) {
             if(status[i] > 0) captured += status[i];
             if(status[i] == -1) {
@@ -174,10 +176,12 @@ public class PrincessesAndMonsters {
                 if(preStatus[i] > 0) deadWithPrincess++;
             }
             if(status[i] >= 0) {
+                Pos p = knight[i].p;
+                knightMap[p.y][p.x]++;
                 distAvg += knight[i].distNext();
                 aliveKnight++;
-                gravY += knight[i].p.y;
-                gravX += knight[i].p.x;
+                gravY += p.y;
+                gravX += p.x;
             }
         }
         gravX /= aliveKnight;
@@ -189,11 +193,13 @@ public class PrincessesAndMonsters {
             Knight kn = knight[i];
             kn.delay = 1;
             final int distNext = kn.distNext();
+            boolean skip = false;
+            if(status[i] > 0 && get(knightMap, kn.p) == 1 && get(knightMap, kn.pre) > 0) skip = true;
             if(changeOrder == 0 && kn.updateCount == Command.Branch && distNext < 4) {
                 notCapturedCO = P - captured;
                 deadKnightCO = deadKnight;
-                gy = gravX;
-                gx = gravY;
+                gy = gravY;
+                gx = gravX;
                 if(P - captured > 4 && deadKnight < K * 0.2)
                     changeOrder = 1;
                 else
@@ -211,15 +217,16 @@ public class PrincessesAndMonsters {
                 }
             }
             if(state == 1 && kn.stop) kn.start();
-            if(state == 2 && kn.updateCount == Command.Finish && distNext == 1) {
-                if(status[i] == 0) kn.update();
-                else escorted += status[i];
-            }
+//            if(state == 2 && kn.updateCount == Command.Finish && distNext == 1) {
+//                if(status[i] == 0) kn.update();
+//                else escorted += status[i];
+//            }
             final int nc = getNearCorner(kn);
             if(nc >= 0) kn.setTarget(cornerY[nc], cornerX[nc]);
             else if(M == 0 && P == 0 || timeLeft < 500) kn.setTarget(cornerY[- nc - 1], cornerX[- nc - 1]);
-            c[i] = kn.move();
-            if(state == 0 && kn.updateCount == Command.Gather && distNext == 1)
+            if(skip) c[i] = 'T';
+            else c[i] = kn.move();
+            if(state == 0 && kn.updateCount == Command.Gather && kn.distNext() == 0)
                 kn.stop();
             if(kn.goal() && !kn.stop) kn.update();
             if(!kn.stop) stopAll = false;
@@ -229,6 +236,12 @@ public class PrincessesAndMonsters {
         else if(state == 1) state++;
         preStatus = status;
         return new String(c);
+    }
+
+    void nop(){}
+
+    int get(int[][] map, Pos p) {
+        return map[p.y][p.x];
     }
 
     int getNearCorner(Knight kn) {
@@ -300,7 +313,7 @@ class Order {
 class Knight {
     static SecureRandom rand;
     int i;
-    Pos p, t, d;
+    Pos p, t, d, pre;
     int orderId;
     List<Order> orderQueue;
     List<Order> subOrders;
@@ -314,6 +327,7 @@ class Knight {
     Knight(int i, int y, int x) {
         p = new Pos(y, x);
         t = new Pos(0, 0);
+        pre = new Pos(y, x);
         this.i = i;
         orderId = 0;
     }
@@ -328,6 +342,7 @@ class Knight {
 
     void setTarget(int y, int x) {
         t = new Pos(y, x);
+        pre.set(0, 0);
     }
 
     void setLoop(PrincessesAndMonsters.Loop loop) {
@@ -366,6 +381,7 @@ class Knight {
             speed = o.speed;
             updateCount = o.command;
             delay = 1;
+            pre.set(0, 0);
         }
         d = new Pos(Math.abs(p.y - t.y), Math.abs(p.x - t.x));
         err = d.x - d.y;
@@ -375,6 +391,7 @@ class Knight {
         final int my = ty - p.y;
         final int mx = tx - p.x;
         final int e2 = err * 2;
+        pre.set(p.y, p.x);
 //        if(e2 < d.x) {
 //        if((Math.abs(my) > Math.abs(mx) && p.dist(t) < 4) || e2 > -d.y) {
         if(Math.abs(my) > Math.abs(mx)) {
