@@ -153,6 +153,7 @@ public class PrincessesAndMonsters {
     int notCapturedCO = 0;
     int deadKnightCO = 0;
     int passedTurnCO = 0;
+    int gy, gx;
 
     int[] preStatus = new int[100];
     public String move(int[] status, int P, int M, int timeLeft) {
@@ -164,6 +165,8 @@ public class PrincessesAndMonsters {
         killedPrincess = this.P - escorted;
         killedMonsters = this.M - M;
         double distAvg = 0;
+        int gravX = 0;
+        int gravY = 0;
         for (int i = 0; i < K; i++) {
             if(status[i] > 0) captured += status[i];
             if(status[i] == -1) {
@@ -173,8 +176,12 @@ public class PrincessesAndMonsters {
             if(status[i] >= 0) {
                 distAvg += knight[i].distNext();
                 aliveKnight++;
+                gravY += knight[i].p.y;
+                gravX += knight[i].p.x;
             }
         }
+        gravX /= aliveKnight;
+        gravY /= aliveKnight;
         if(aliveKnight > 0) distAvg /= aliveKnight;
         if(distAvg == 0) distAvg = 1;
         for (int i = 0; i < K; i++) {
@@ -182,23 +189,27 @@ public class PrincessesAndMonsters {
             Knight kn = knight[i];
             kn.delay = 1;
             final int distNext = kn.distNext();
-            if(changeOrder == 0 && kn.updateCount == Command.Branch && distNext < 2) {
+            if(changeOrder == 0 && kn.updateCount == Command.Branch && distNext < 4) {
                 notCapturedCO = P - captured;
                 deadKnightCO = deadKnight;
+                gy = gravX;
+                gx = gravY;
                 if(P - captured > 4 && deadKnight < K * 0.2)
                     changeOrder = 1;
                 else
                     changeOrder = -1;
             }
             if(kn.updateCount == Command.Branch) {
-                if(changeOrder == -1) kn.updateCount = Command.Gather;
-                else if(changeOrder == 1) {
+//                if(status[i] > 0 && distAvg > distNext) kn.delay = 0.9;
+                if(changeOrder == -1) {
+                    kn.updateCount = Command.Gather;
+                    kn.setTarget(gy, gx);
+                } else if(changeOrder == 1) {
                     kn.changeOrderSet();
                     kn.update();
                     if(status[i] > 0) kn.setTarget(cy, cx);
                 }
             }
-            if(state == 0 && kn.updateCount == Command.Gather && distNext < 2) kn.stop();
             if(state == 1 && kn.stop) kn.start();
             if(state == 2 && kn.updateCount == Command.Finish && distNext == 1) {
                 if(status[i] == 0) kn.update();
@@ -208,10 +219,13 @@ public class PrincessesAndMonsters {
             if(nc >= 0) kn.setTarget(cornerY[nc], cornerX[nc]);
             else if(M == 0 && P == 0 || timeLeft < 500) kn.setTarget(cornerY[- nc - 1], cornerX[- nc - 1]);
             c[i] = kn.move();
-            if(kn.goal()) kn.update();
+            if(state == 0 && kn.updateCount == Command.Gather && distNext == 1)
+                kn.stop();
+            if(kn.goal() && !kn.stop) kn.update();
             if(!kn.stop) stopAll = false;
         }
-        if(stopAll) state++;
+        if(stopAll)
+            state++;
         else if(state == 1) state++;
         preStatus = status;
         return new String(c);
