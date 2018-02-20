@@ -224,7 +224,7 @@ public class PrincessesAndMonsters {
             }
             final int nc = getNearCorner(kn);
             if(nc >= 0) kn.setTarget(cornerY[nc], cornerX[nc]);
-            else if(M == 0 && P == 0 || timeLeft < 500) kn.setTarget(cornerY[- nc - 1], cornerX[- nc - 1]);
+            else if(M == 0 && P == 0 || timeLeft < 500 || kn.inLoop() && get(knightMap, kn.p) <= 5) kn.setTarget(cornerY[- nc - 1], cornerX[- nc - 1]);
             if(skip) c[i] = 'T';
             else c[i] = kn.move();
             if(state == 0 && kn.updateCount == Command.Gather && kn.distNext() == 0)
@@ -363,6 +363,10 @@ class Knight {
     void changeOrderSet() {
         orderQueue = subOrders;
         orderId = 0;
+    }
+
+    boolean inLoop() {
+        return orderId >= orderQueue.size();
     }
 
     char move() {
