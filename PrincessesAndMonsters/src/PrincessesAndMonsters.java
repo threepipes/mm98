@@ -59,10 +59,17 @@ public class PrincessesAndMonsters {
         cxf = (double) centerX / P;
         cy = (int) cyf;
         cx = (int) cxf;
+        meanDist = 0;
+        for (int i = 0; i < P; i++) {
+            for (int j = 0; j < M; j++) {
+                meanDist += Math.abs(msy[i] - psy[i]) + Math.abs(msy[i] - psy[i]);
+            }
+        }
+        meanDist /= P * M;
 
-        int widMax = Math.max(pBottom - pTop, pRight - pLeft);
+        int widMax = (int) meanDist / 4 + P * 2 / K;//Math.max(pBottom - pTop, pRight - pLeft);
         widMax = Math.max(widMax, 3);
-        widMax = (Math.max(widMax, K / 3) + widMax) / 4 + S / 20;
+//        widMax = (Math.max(widMax, K / 3) + widMax) / 4 + S / 20;
         pLeft = Math.max(cx - widMax, 1);
         pRight = Math.min(cx + widMax, S - 2);
         pTop = Math.max(cy - widMax, 1);
@@ -86,13 +93,7 @@ public class PrincessesAndMonsters {
             msy[i] = monsters[i * 2];
             msx[i] = monsters[i * 2 + 1];
         }
-        meanDist = 0;
-        for (int i = 0; i < P; i++) {
-            for (int j = 0; j < M; j++) {
-                meanDist += Math.abs(msy[i] - psy[i]) + Math.abs(msy[i] - psy[i]);
-            }
-        }
-        meanDist /= P * M;
+
 //        System.out.println(meanDist + " " + S);
 
         knight = new Knight[K];
@@ -194,7 +195,7 @@ public class PrincessesAndMonsters {
             kn.delay = 1;
             final int distNext = kn.distNext();
             boolean skip = false;
-            if(status[i] > 0 && get(knightMap, kn.p) == 1 && get(knightMap, kn.pre) > 0) skip = true;
+//            if(status[i] > 0 && get(knightMap, kn.p) == 1 && get(knightMap, kn.pre) > 0) skip = true;
             if(changeOrder == 0 && kn.updateCount == Command.Branch && distNext < 4) {
                 notCapturedCO = P - captured;
                 deadKnightCO = deadKnight;
@@ -217,10 +218,10 @@ public class PrincessesAndMonsters {
                 }
             }
             if(state == 1 && kn.stop) kn.start();
-//            if(state == 2 && kn.updateCount == Command.Finish && distNext == 1) {
-//                if(status[i] == 0) kn.update();
-//                else escorted += status[i];
-//            }
+            if(state == 2 && kn.updateCount == Command.Finish && distNext == 1) {
+                if(status[i] == 0) kn.update();
+                else escorted += status[i];
+            }
             final int nc = getNearCorner(kn);
             if(nc >= 0) kn.setTarget(cornerY[nc], cornerX[nc]);
             else if(M == 0 && P == 0 || timeLeft < 500) kn.setTarget(cornerY[- nc - 1], cornerX[- nc - 1]);

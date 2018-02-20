@@ -7,10 +7,11 @@ public class ParameterOptimizer {
         opt.optimizer();
     }
 
+    final int EVAL_SIZE = 50;
     double evaluate(int idx) {
         double score = 0;
         double raw = 0;
-        int start = 1001, end = 2000;
+        int start = 1001, end = start + EVAL_SIZE - 1;
         List<Generator> list = new ArrayList<>();
         for (int i = start; i <= end; i++) {
             list.add(new Generator(i + ""));
