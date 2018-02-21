@@ -1,21 +1,28 @@
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.util.*;
 
 public class ParameterOptimizer {
     public static void main(String[] args) throws IOException {
-        SimulatedAnnealing sa = new SimulatedAnnealing();
-        sa.sa();
+//        evalCSV("best.csv");
+        simulatedAnnealing();
     }
 
-    static final int EVAL_SIZE = 100;
+    static void simulatedAnnealing() throws IOException {
+        SimulatedAnnealing sa = new SimulatedAnnealing();
+        TreeSet<Ev> tree = sa.sa();
+        EVAL_SIZE = 5000;
+        for(Ev ev: tree) {
+            ev.evaluate();
+            System.out.println(ev);
+        }
+    }
+
+    static int EVAL_SIZE = 1000;
     static double evaluate(int idx, boolean output) {
         PrincessesAndMonstersVis.TL = 2000;
         double score = 0;
         double raw = 0;
-        int start = 1001, end = start + EVAL_SIZE - 1;
+        int start = 2001, end = start + EVAL_SIZE - 1;
         List<Generator> list = new ArrayList<>();
         for (int i = start; i <= end; i++) {
             list.add(new Generator(i + ""));
@@ -52,33 +59,58 @@ public class ParameterOptimizer {
         System.out.println(max + " " + maxId);
     }
 
+    static void evalCSV(String filepath) throws IOException {
+        EVAL_SIZE = 5000;
+        Scanner in = new Scanner(new File(filepath));
+
+        while(in.hasNextLine()) {
+            String line = in.nextLine();
+            int[] params = new int[Ev.PARAM_SIZE];
+            String[] data = line.split(",");
+            for (int i = 0; i < params.length; i++) {
+                params[i] = Integer.parseInt(data[i]);
+            }
+            Ev ev = new Ev(params);
+            ev.evaluate();
+            System.out.println(ev);
+        }
+    }
 }
 
 
 class SimulatedAnnealing {
     Ev initialEv = new Ev(Ev.PARAM_INI.clone());
     final double TEMPER = 0.01;
+    final double TOP = 10;
 
-    void sa() throws IOException {
-        Ev Ev = initialEv;
+    TreeSet<Ev> sa() throws IOException {
+        TreeSet<Ev> tree = new TreeSet<>();
+        Ev ev = initialEv;
+        final int WARMING = 5;
         System.out.println("Start evaluate v1.0.");
         long time = System.currentTimeMillis();
-        double score = Ev.evaluate();
-        time = System.currentTimeMillis() - time;
+        for (int i = 0; i < WARMING; i++) {
+            ev.evaluate();
+        }
+        double score = ev.score;
+        time = (System.currentTimeMillis() - time) / WARMING;
+        tree.add(ev);
         System.out.println("Initial score: " + score);
-        Ev best = Ev;
+        Ev best = ev;
         double bestScore = score;
-        final long HOUR_10 = 10 * 3600 * 1000;
+        final long HOUR_10 = 8 * 3600 * 1000;
         final int MAX_ITER = (int)(HOUR_10 / time);
         System.out.println("Iter Num: " + MAX_ITER);
         Random rand = new Random(0);
         PrintWriter pw = new PrintWriter(
                 new BufferedWriter(new FileWriter("log.txt")));
-        pw.println(Ev.csv());
+        pw.println(ev.csv());
         for(int i = 0; i < MAX_ITER; i++) {
             double degree = ((double)MAX_ITER - i) / MAX_ITER;
-            Ev next = Ev.generateNext(degree);
+            Ev next = ev.generateNext(degree);
             double nextScore = next.evaluate();
+            tree.add(next);
+            if(tree.size() > TOP) tree.pollLast();
             pw.println(next.csv());
             if((i + 1) % 10 == 0) pw.flush();
             String output = String.format("Iter %d/%d: score=%f ", i, MAX_ITER, nextScore);
@@ -91,15 +123,16 @@ class SimulatedAnnealing {
             double prob = prob(score, nextScore, temperature);
             output += String.format("T:%f P:%f ", temperature, prob);
             if(rand.nextDouble() <= prob) {
-                Ev = next;
+                ev = next;
                 score = nextScore;
                 output += "swap ";
             }
-            output += String.format("Now: %s, Best: %s", Ev, best);
+            output += String.format("Now: %s, Best: %s", ev, best);
             System.out.println(output);
         }
         pw.close();
         System.out.printf("Best: %s\n", best);
+        return tree;
     }
 
     double temper(double r) {
@@ -108,7 +141,7 @@ class SimulatedAnnealing {
 
     double prob(double curScore, double nextScore, double temper) {
         if(curScore <= nextScore) return 1;
-        else return Math.pow(Math.E, (nextScore - curScore) * 100 / temper);
+        else return Math.pow(Math.E, (nextScore - curScore) / (temper * 1000));
     }
 }
 
@@ -116,10 +149,13 @@ class Ev implements Comparable<Ev> {
     static Random rand = new Random(0);
     double score;
     int[] params;
-    public static final int[] PARAM_INI = {15, 40, 10,  5,  4,  4, 20};
-    public static final int[] PARAM_MAX = {50, 50, 50, 20, 10, 10, 50};
-    public static final int[] PARAM_BASE= {10, 10, 10,  0,  1,  0,  0};
-    public static final int PARAM_SIZE = 7;
+//    public static final int[] PARAM_INI = {15, 40, 10,  4,  4,  0,  0, 30};
+    public static final int[] PARAM_INI =   {21,  8,  6,  5,  3, 12, 16, 23};
+//    public static final int[] PARAM_INI = {48, 39, 20,  2,  2, 47, 13,  27};
+//    public static final int[] PARAM_INI = {15, 25,  4,    2,  1, 30};
+    public static final int[] PARAM_MAX =   {50, 50, 50, 10, 10,200, 30, 60};
+    public static final int[] PARAM_BASE=   {10, 10, 10,  1,  0,  0,  0,-30};
+    public static final int PARAM_SIZE = 8;
     Ev(int[] params) {
         this.params = params;
     }
@@ -136,11 +172,14 @@ class Ev implements Comparable<Ev> {
         PrincessesAndMonsters.C_MEANDIST = (double) (params[0] + PARAM_BASE[0]) / 100;
         PrincessesAndMonsters.C_MIN_WID = (double) (params[1] + PARAM_BASE[1]) / 100;
         PrincessesAndMonsters.C_MAX_WID = (double) (params[2] + PARAM_BASE[2]) / 100;
-        PrincessesAndMonsters.RETURN_LIMIT = params[3] + PARAM_BASE[3];
-        PrincessesAndMonsters.DECIDE_DIST = params[4] + PARAM_BASE[4];
-        PrincessesAndMonsters.P_REVERSE_LIMIT = params[5] + PARAM_BASE[5];
-        PrincessesAndMonsters.K_REVERSE_LIMIT = (double) (params[6] + PARAM_BASE[6]) / 100;
-        return ParameterOptimizer.evaluate(0, false);
+        PrincessesAndMonsters.DECIDE_DIST = params[3] + PARAM_BASE[3];
+        PrincessesAndMonsters.P_REVERSE_LIMIT = params[4] + PARAM_BASE[4];
+        PrincessesAndMonsters.P_GRAV_COEF = (double) (params[5] + PARAM_BASE[5]) / 10;
+        PrincessesAndMonsters.C_P_WIDMAX = (double) (params[6] + PARAM_BASE[6]) / 100;
+        PrincessesAndMonsters.C_K_WIDMAX = (double) (params[7] + PARAM_BASE[7]) / 100;
+//        PrincessesAndMonsters.RETURN_LIMIT = params[3] + PARAM_BASE[3];
+        score = ParameterOptimizer.evaluate(0, false);
+        return score;
     }
 
     @Override

@@ -60,6 +60,12 @@ public class PrincessesAndMonsters {
             pBottom = Math.max(pBottom, psy[i]);
             pRight = Math.max(pRight, psx[i]);
         }
+
+        for (int i = 0; i < M; i++) {
+            msy[i] = monsters[i * 2];
+            msx[i] = monsters[i * 2 + 1];
+        }
+
         cyf = (double) centerY / P;
         cxf = (double) centerX / P;
         cy = (int) cyf;
@@ -67,7 +73,7 @@ public class PrincessesAndMonsters {
         meanDist = 0;
         for (int i = 0; i < P; i++) {
             for (int j = 0; j < M; j++) {
-                meanDist += Math.abs(msy[i] - psy[i]) + Math.abs(msy[i] - psy[i]);
+                meanDist += Math.abs(msy[i] - psy[i]) + Math.abs(msx[i] - psx[i]);
             }
         }
         meanDist /= P * M;
@@ -97,37 +103,17 @@ public class PrincessesAndMonsters {
             }
         }
 
-        for (int i = 0; i < M; i++) {
-            msy[i] = monsters[i * 2];
-            msx[i] = monsters[i * 2 + 1];
-        }
-
-//        System.out.println(meanDist + " " + S);
         int[][] diags = {diay, diax};
         final int w = Math.min(K / 4, widMax);
 
         knight = new Knight[K];
         final int diag = (initC + 2) % 4;
-        final int baseY = pCornerY[(initC + 1) % 4];
-        final int baseX = pCornerX[(initC + 1) % 4];
         int group = 1;
         Loop[] loops = new Loop[group];
         for (int i = 0; i < group; i++) {
             loops[i] = new Loop(rand.nextBoolean() ? 1 : -1, rand.nextInt(S / 3) + 1, (initC + 2) % 4);
         }
         for (int i = 0; i < K; i++) {
-//            final double vy = - baseY + pCornerY[(initC + 3) % 4];
-//            final double vx = - baseX + pCornerX[(initC + 3) % 4];
-//            final double t = sigmoid(SIGMOID_A, rand.nextDouble() * 2 - 1);
-//            Pos tPos = new Pos(
-//                    (int)(baseY + vy * t),
-//                    (int)(baseX + vx * t)
-//            );
-//            final double ts = sigmoid(SIGMOID_A, rand.nextDouble() * 2 - 1) / 2 + 0.25;
-//            Pos sPos = new Pos(
-//                    (int)(baseY + vy * ts),
-//                    (int)(baseX + vx * ts)
-//            );
             final int a = i % 2;
             final int wx = i / 2;
             int[] first = {pCornerY[initC], pCornerX[initC]};
@@ -153,29 +139,17 @@ public class PrincessesAndMonsters {
             knight[i].setLoop(loops[i % group].copy());
             knight[i].update();
         }
-        ay = 0;
-        ax = 0;
         c = new char[K];
         Arrays.fill(c, (char)('0' + initC));
         return new String(c);
     }
 
     int[][] knightMap;
-    int ax, ay;
     int state = 0;
     int changeOrder = 0;
     int deadKnight = 0;
-    int deadWithPrincess = 0;
-    int killedPrincess = 0;
-    int killedMonsters = 0;
     int escorted = 0;
-
-    int notCapturedCO = 0;
-    int deadKnightCO = 0;
-    int passedTurnCO = 0;
     int gy, gx;
-
-    int[] preStatus = new int[100];
 
     static int RETURN_LIMIT = 6;
     static int DECIDE_DIST = 6;
@@ -189,9 +163,6 @@ public class PrincessesAndMonsters {
         int captured = 0;
         int aliveKnight = 0;
         deadKnight = 0;
-        killedPrincess = this.P - escorted;
-        killedMonsters = this.M - M;
-        double distAvg = 0;
         int gravX = 0;
         int gravY = 0;
         knightMap = new int[S][S];
@@ -204,11 +175,9 @@ public class PrincessesAndMonsters {
             }
             if(status[i] == -1) {
                 deadKnight++;
-                if(preStatus[i] > 0) deadWithPrincess++;
             }
             if(status[i] >= 0) {
                 knightMap[p.y][p.x]++;
-                distAvg += knight[i].distNext();
                 aliveKnight++;
                 gravY += p.y;
                 gravX += p.x;
@@ -217,18 +186,13 @@ public class PrincessesAndMonsters {
 
         gravX = (int)(gravX / (captured * P_GRAV_COEF + aliveKnight));
         gravY = (int)(gravY / (captured * P_GRAV_COEF + aliveKnight));
-        if(aliveKnight > 0) distAvg /= aliveKnight;
-        if(distAvg == 0) distAvg = 1;
         for (int i = 0; i < K; i++) {
             if(status[i] < 0) continue;
             Knight kn = knight[i];
             kn.delay = 1;
             final int distNext = kn.distNext();
             boolean skip = false;
-//            if(status[i] > 0 && get(knightMap, kn.p) == 1 && get(knightMap, kn.pre) > 0) skip = true;
             if(changeOrder == 0 && kn.updateCount == Command.Branch && distNext < DECIDE_DIST) {
-                notCapturedCO = P - captured;
-                deadKnightCO = deadKnight;
                 gy = gravY;
                 gx = gravX;
                 if(P - captured > P_REVERSE_LIMIT && deadKnight < K * K_REVERSE_LIMIT)
@@ -237,21 +201,19 @@ public class PrincessesAndMonsters {
                     changeOrder = -1;
             }
             if(kn.updateCount == Command.Branch) {
-//                if(status[i] > 0 && distAvg > distNext) kn.delay = 0.9;
                 if(changeOrder == -1) {
                     kn.updateCount = Command.Gather;
                     kn.setTarget(gy, gx);
                 } else if(changeOrder == 1) {
                     kn.changeOrderSet();
                     kn.update();
-//                    if(status[i] > 0) kn.setTarget(cy, cx);
                 }
             }
             if(state == 1 && kn.stop) kn.start();
-            if(state == 2 && kn.updateCount == Command.Finish && distNext == 1) {
-                if(status[i] == 0) kn.update();
-                else escorted += status[i];
-            }
+//            if(state == 2 && kn.updateCount == Command.Finish && distNext == 1) {
+//                if(status[i] == 0) kn.update();
+//                else escorted += status[i];
+//            }
             final int nc = getNearCorner(kn);
             if(nc >= 0) kn.setTarget(cornerY[nc], cornerX[nc]);
             else if(M == 0 && P == 0
@@ -269,11 +231,8 @@ public class PrincessesAndMonsters {
         if(stopAll)
             state++;
         else if(state == 1) state++;
-        preStatus = status;
         return new String(c);
     }
-
-    void nop(){}
 
     int get(int[][] map, Pos p) {
         return map[p.y][p.x];
@@ -299,9 +258,6 @@ public class PrincessesAndMonsters {
 
     int dist(int y1, int x1, int y2, int x2) {
         return Math.abs(y1 - y2) + Math.abs(x1 - x2);
-    }
-    double sigmoid(double a, double x) {
-        return 1 / (1 + Math.pow(Math.E, -a * x));
     }
 
     class Loop {
@@ -358,7 +314,6 @@ class Knight {
     double speed = 1;
     double delay = 1;
     boolean stop = false;
-    int err;
 
     Knight(int i, int y, int x, SecureRandom rand) {
         p = new Pos(y, x);
@@ -426,18 +381,13 @@ class Knight {
             pre.set(0, 0);
         }
         d = new Pos(Math.abs(p.y - t.y), Math.abs(p.x - t.x));
-        err = d.x - d.y;
     }
 
     char move(int ty, int tx) {
         final int my = ty - p.y;
         final int mx = tx - p.x;
-        final int e2 = err * 2;
         pre.set(p.y, p.x);
-//        if(e2 < d.x) {
-//        if((Math.abs(my) > Math.abs(mx) && p.dist(t) < 4) || e2 > -d.y) {
         if(Math.abs(my) > Math.abs(mx)) {
-            err += d.x;
             if(my < 0) {
                 p.y--;
                 return 'N';
@@ -446,7 +396,6 @@ class Knight {
                 return 'S';
             }
         } else {
-            err -= d.y;
             if(mx < 0) {
                 p.x--;
                 return 'W';
