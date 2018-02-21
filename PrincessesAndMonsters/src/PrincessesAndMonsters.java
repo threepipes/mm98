@@ -67,9 +67,12 @@ public class PrincessesAndMonsters {
         }
         meanDist /= P * M;
 
-        int widMax = (int) meanDist / 4;//Math.max(pBottom - pTop, pRight - pLeft);
+        int widMax = (int) (meanDist / 4);
         widMax = Math.max(widMax, 3);
-//        widMax = (Math.max(widMax, K / 3) + widMax) / 4 + S / 20;
+        widMax = Math.min(widMax, (K / 2 + widMax) / 2);
+        widMax = Math.max(widMax, (K / 5 + widMax) / 2);
+        widMax = Math.min(widMax, Math.min(cx, S - cx) - 1);
+        widMax = Math.min(widMax, Math.min(cy, S - cy) - 1);
         pLeft = Math.max(cx - widMax, 1);
         pRight = Math.min(cx + widMax, S - 2);
         pTop = Math.max(cy - widMax, 1);
@@ -180,14 +183,19 @@ public class PrincessesAndMonsters {
         int gravX = 0;
         int gravY = 0;
         knightMap = new int[S][S];
+        final int pGravCoef = 0;
         for (int i = 0; i < K; i++) {
-            if(status[i] > 0) captured += status[i];
+            Pos p = knight[i].p;
+            if(status[i] > 0) {
+                captured += status[i];
+                gravY += p.y * pGravCoef;
+                gravX += p.x * pGravCoef;
+            }
             if(status[i] == -1) {
                 deadKnight++;
                 if(preStatus[i] > 0) deadWithPrincess++;
             }
             if(status[i] >= 0) {
-                Pos p = knight[i].p;
                 knightMap[p.y][p.x]++;
                 distAvg += knight[i].distNext();
                 aliveKnight++;
@@ -195,8 +203,9 @@ public class PrincessesAndMonsters {
                 gravX += p.x;
             }
         }
-        gravX /= aliveKnight;
-        gravY /= aliveKnight;
+
+        gravX /= captured * pGravCoef + aliveKnight;
+        gravY /= captured * pGravCoef + aliveKnight;
         if(aliveKnight > 0) distAvg /= aliveKnight;
         if(distAvg == 0) distAvg = 1;
         for (int i = 0; i < K; i++) {
@@ -224,7 +233,7 @@ public class PrincessesAndMonsters {
                 } else if(changeOrder == 1) {
                     kn.changeOrderSet();
                     kn.update();
-                    if(status[i] > 0) kn.setTarget(cy, cx);
+//                    if(status[i] > 0) kn.setTarget(cy, cx);
                 }
             }
             if(state == 1 && kn.stop) kn.start();
