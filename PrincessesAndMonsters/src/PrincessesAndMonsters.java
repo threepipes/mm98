@@ -23,9 +23,11 @@ public class PrincessesAndMonsters {
     double cyf, cxf;
 
     static double SIGMOID_A = 3;
-    static double C_MEANDIST = 0.25;
-    static double C_MIN_WID = 0.5;
-    static double C_MAX_WID = 0.2;
+    static double C_MEANDIST = 0.31;
+    static double C_MIN_WID = 0.18;
+    static double C_MAX_WID = 0.16;
+    static double C_P_WIDMAX = 0.16;
+    static double C_K_WIDMAX =-0.07;
     static long RAND_SEED = 1234;
 
     public String initialize(int S, int[] princesses, int[] monsters, int K) {
@@ -70,7 +72,7 @@ public class PrincessesAndMonsters {
         }
         meanDist /= P * M;
 
-        int widMax = (int) (meanDist * C_MEANDIST);
+        int widMax = (int) (meanDist * C_MEANDIST + P * C_P_WIDMAX + K * C_K_WIDMAX);
         widMax = Math.max(widMax, 3);
         widMax = Math.min(widMax, (int)(K * C_MIN_WID + widMax) / 2);
         widMax = Math.max(widMax, (int)(K * C_MAX_WID + widMax) / 2);
@@ -175,10 +177,11 @@ public class PrincessesAndMonsters {
 
     int[] preStatus = new int[100];
 
-    static int RETURN_LIMIT = 5;
-    static int DECIDE_DIST = 4;
-    static int P_REVERSE_LIMIT = 4;
-    static double K_REVERSE_LIMIT = 0.2;
+    static int RETURN_LIMIT = 6;
+    static int DECIDE_DIST = 6;
+    static int P_REVERSE_LIMIT = 3;
+    static double K_REVERSE_LIMIT = 0.3;
+    static double P_GRAV_COEF = 1.2;
 
     public String move(int[] status, int P, int M, int timeLeft) {
         t++;
@@ -192,13 +195,12 @@ public class PrincessesAndMonsters {
         int gravX = 0;
         int gravY = 0;
         knightMap = new int[S][S];
-        final int pGravCoef = 0;
         for (int i = 0; i < K; i++) {
             Pos p = knight[i].p;
             if(status[i] > 0) {
                 captured += status[i];
-                gravY += p.y * pGravCoef;
-                gravX += p.x * pGravCoef;
+                gravY += p.y * P_GRAV_COEF;
+                gravX += p.x * P_GRAV_COEF;
             }
             if(status[i] == -1) {
                 deadKnight++;
@@ -213,8 +215,8 @@ public class PrincessesAndMonsters {
             }
         }
 
-        gravX /= captured * pGravCoef + aliveKnight;
-        gravY /= captured * pGravCoef + aliveKnight;
+        gravX = (int)(gravX / (captured * P_GRAV_COEF + aliveKnight));
+        gravY = (int)(gravY / (captured * P_GRAV_COEF + aliveKnight));
         if(aliveKnight > 0) distAvg /= aliveKnight;
         if(distAvg == 0) distAvg = 1;
         for (int i = 0; i < K; i++) {
