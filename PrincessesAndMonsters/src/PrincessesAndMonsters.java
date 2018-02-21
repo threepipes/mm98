@@ -30,7 +30,7 @@ public class PrincessesAndMonsters {
             rand = SecureRandom.getInstance("SHA1PRNG");
         } catch (Exception e) { return ""; }
         rand.setSeed(RAND_SEED);
-        Knight.rand = rand;
+//        Knight.rand = rand;
         t = -1;
 
         this.S = S;
@@ -67,7 +67,7 @@ public class PrincessesAndMonsters {
         }
         meanDist /= P * M;
 
-        int widMax = (int) meanDist / 4 + P * 2 / K;//Math.max(pBottom - pTop, pRight - pLeft);
+        int widMax = (int) meanDist / 4;//Math.max(pBottom - pTop, pRight - pLeft);
         widMax = Math.max(widMax, 3);
 //        widMax = (Math.max(widMax, K / 3) + widMax) / 4 + S / 20;
         pLeft = Math.max(cx - widMax, 1);
@@ -95,6 +95,8 @@ public class PrincessesAndMonsters {
         }
 
 //        System.out.println(meanDist + " " + S);
+        int[][] diags = {diay, diax};
+        final int w = Math.min(K / 4, widMax);
 
         knight = new Knight[K];
         final int diag = (initC + 2) % 4;
@@ -118,17 +120,25 @@ public class PrincessesAndMonsters {
 //                    (int)(baseY + vy * ts),
 //                    (int)(baseX + vx * ts)
 //            );
-            knight[i] = new Knight(i, cornerY[initC], cornerX[initC]);
+            final int a = i % 2;
+            final int wx = i / 2;
+            int[] first = {pCornerY[initC], pCornerX[initC]};
+            first[a] += diags[a][initC] * (widMax + w - wx % (w * 2));
+            int[] second = first.clone();
+            second[a^1] += diags[a^1][initC] * widMax * 2;
+            Command secCom = a == 0 ? Command.SkipOne : Command.Diagonal;
+
+            knight[i] = new Knight(i, cornerY[initC], cornerX[initC], this.rand);
             knight[i].setOrderQueue(new Order[]{
                     new Order(Command.Corner, new Pos(pCornerY[initC], pCornerX[initC]), 1),
-                    new Order(Command.Diagonal, tPos,
-                            1 - (1 - Math.pow((t - 0.5) * 2, 2)) * 0.2 - 0.1 - rand.nextDouble() * 0.1),
+                    new Order(Command.Diagonal, new Pos(first[0], first[1]), 1),
+                    new Order(secCom, new Pos(second[0], second[1]), 1),
                     new Order(Command.Branch, new Pos(pCornerY[diag], pCornerX[diag]), 1),
                     new Order(Command.Finish, new Pos(cornerY[diag], cornerX[diag]), 1),
             });
             knight[i].setOrderSub(new Order[]{
-                    new Order(Command.Diagonal, tPos,
-                            1 - (1 - Math.pow((t - 0.5) * 2, 2)) * 0.2 - 0.1 - rand.nextDouble() * 0.1),
+                    new Order(Command.Diagonal, new Pos(second[0], second[1]), 1),
+                    new Order(Command.Diagonal, new Pos(first[0], first[1]), 1),
                     new Order(Command.Gather, new Pos(pCornerY[initC], pCornerX[initC]), 1),
                     new Order(Command.Finish, new Pos(cornerY[initC], cornerX[initC]), 1),
             });
@@ -227,6 +237,7 @@ public class PrincessesAndMonsters {
             else if(M == 0 && P == 0 || timeLeft < 500 || kn.inLoop() && get(knightMap, kn.p) <= 5) kn.setTarget(cornerY[- nc - 1], cornerX[- nc - 1]);
             if(skip) c[i] = 'T';
             else c[i] = kn.move();
+            if(kn.updateCount == Command.SkipOne) kn.speed = 1;
             if(state == 0 && kn.updateCount == Command.Gather && kn.distNext() == 0)
                 kn.stop();
             if(kn.goal() && !kn.stop) kn.update();
@@ -295,6 +306,7 @@ enum Command {
     Init,
     Corner,
     Diagonal,
+    SkipOne,
     Branch,
     Gather,
     Finish,
@@ -312,7 +324,7 @@ class Order {
 }
 
 class Knight {
-    static SecureRandom rand;
+    SecureRandom rand;
     int i;
     Pos p, t, d, pre;
     int orderId;
@@ -325,12 +337,13 @@ class Knight {
     boolean stop = false;
     int err;
 
-    Knight(int i, int y, int x) {
+    Knight(int i, int y, int x, SecureRandom rand) {
         p = new Pos(y, x);
         t = new Pos(0, 0);
         pre = new Pos(y, x);
         this.i = i;
         orderId = 0;
+        this.rand = rand;
     }
 
     void stop() {
@@ -385,6 +398,7 @@ class Knight {
             t = o.pos;
             speed = o.speed;
             updateCount = o.command;
+            if(updateCount == Command.SkipOne) speed = 0;
             delay = 1;
             pre.set(0, 0);
         }
