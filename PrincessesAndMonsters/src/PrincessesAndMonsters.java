@@ -23,11 +23,11 @@ public class PrincessesAndMonsters {
     double cyf, cxf;
 
     static double SIGMOID_A = 3;
-    static double C_MEANDIST = 0.31;
-    static double C_MIN_WID = 0.18;
-    static double C_MAX_WID = 0.16;
-    static double C_P_WIDMAX = 0.16;
-    static double C_K_WIDMAX =-0.07;
+    static double C_MEANDIST = 0.41;
+    static double C_MIN_WID = 0.28;
+    static double C_MAX_WID = 0.11;
+    static double C_P_WIDMAX = 0.01;
+    static double C_K_WIDMAX = 0.01;
     static long RAND_SEED = 1234;
 
     public String initialize(int S, int[] princesses, int[] monsters, int K) {
@@ -48,17 +48,11 @@ public class PrincessesAndMonsters {
         msx = new int[M];
         int centerY = 0;
         int centerX = 0;
-        pLeft = S;
-        pTop = S;
         for (int i = 0; i < P; i++) {
             psy[i] = princesses[i * 2];
             psx[i] = princesses[i * 2 + 1];
             centerY += psy[i];
             centerX += psx[i];
-            pTop = Math.min(pTop, psy[i]);
-            pLeft = Math.min(pLeft, psx[i]);
-            pBottom = Math.max(pBottom, psy[i]);
-            pRight = Math.max(pRight, psx[i]);
         }
 
         for (int i = 0; i < M; i++) {
@@ -152,10 +146,10 @@ public class PrincessesAndMonsters {
     int gy, gx;
 
     static int RETURN_LIMIT = 6;
-    static int DECIDE_DIST = 6;
-    static int P_REVERSE_LIMIT = 3;
+    static int DECIDE_DIST = 4;
+    static int P_REVERSE_LIMIT = 4;
     static double K_REVERSE_LIMIT = 0.3;
-    static double P_GRAV_COEF = 1.2;
+    static double P_GRAV_COEF = 0.6;
 
     public String move(int[] status, int P, int M, int timeLeft) {
         t++;
@@ -191,7 +185,6 @@ public class PrincessesAndMonsters {
             Knight kn = knight[i];
             kn.delay = 1;
             final int distNext = kn.distNext();
-            boolean skip = false;
             if(changeOrder == 0 && kn.updateCount == Command.Branch && distNext < DECIDE_DIST) {
                 gy = gravY;
                 gx = gravX;
@@ -210,26 +203,24 @@ public class PrincessesAndMonsters {
                 }
             }
             if(state == 1 && kn.stop) kn.start();
-//            if(state == 2 && kn.updateCount == Command.Finish && distNext == 1) {
-//                if(status[i] == 0) kn.update();
-//                else escorted += status[i];
-//            }
+            if(state == 2 && kn.updateCount == Command.Finish && distNext == 1) {
+                if(status[i] == 0) kn.update();
+                else escorted += status[i];
+            }
             final int nc = getNearCorner(kn);
             if(nc >= 0) kn.setTarget(cornerY[nc], cornerX[nc]);
             else if(M == 0 && P == 0
                     || timeLeft < 500
                     || kn.inLoop() && get(knightMap, kn.p) <= RETURN_LIMIT)
                 kn.setTarget(cornerY[- nc - 1], cornerX[- nc - 1]);
-            if(skip) c[i] = 'T';
-            else c[i] = kn.move();
+            c[i] = kn.move();
             if(kn.updateCount == Command.SkipOne) kn.speed = 1;
             if(state == 0 && kn.updateCount == Command.Gather && kn.distNext() == 0)
                 kn.stop();
             if(kn.goal() && !kn.stop) kn.update();
             if(!kn.stop) stopAll = false;
         }
-        if(stopAll)
-            state++;
+        if(stopAll) state++;
         else if(state == 1) state++;
         return new String(c);
     }
